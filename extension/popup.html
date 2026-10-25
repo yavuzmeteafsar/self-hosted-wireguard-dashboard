@@ -1,0 +1,213 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Server-VPN Status</title>
+<style>
+  :root {
+    --bg: #0a0b0d;
+    --surface: rgba(255,255,255,0.035);
+    --border: rgba(255,255,255,0.08);
+    --text: #f4f4f2;
+    --muted: #8a8d93;
+    --faint: #55585e;
+    --cpu: #60a5fa;
+    --ram: #c084fc;
+    --live: #34d399;
+    --idle: #3f4247;
+    --warn: #f2b84b;
+    --sans: -apple-system, BlinkMacSystemFont, "SF Pro Text", "Segoe UI", sans-serif;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    width: 320px;
+    background: var(--bg);
+    color: var(--text);
+    font-family: var(--sans);
+    -webkit-font-smoothing: antialiased;
+  }
+
+  header {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 12px 14px 8px;
+  }
+  .logo { width: 32px; height: 32px; flex-shrink: 0; }
+  .status-dot {
+    width: 7px; height: 7px; border-radius: 50%;
+    background: var(--idle);
+    transition: background-color 500ms cubic-bezier(0.22,1,0.36,1);
+  }
+  .status-dot.live { background: var(--live); box-shadow: 0 0 8px rgba(52,211,153,0.5); }
+  h1 { font-size: 13px; font-weight: 600; letter-spacing: -0.01em; margin: 0; flex: 1; }
+  #gearBtn, #refreshBtn {
+    background: none; border: none; color: var(--muted); cursor: pointer;
+    font-size: 13px; padding: 3px 5px; border-radius: 6px;
+    transition: background-color 150ms ease, transform 100ms ease-out;
+  }
+  #gearBtn:active, #refreshBtn:active { transform: scale(0.9); background: var(--surface); }
+  #updated { font-size: 10px; color: var(--faint); padding: 0 14px 10px; font-variant-numeric: tabular-nums; }
+
+  main { padding: 0 14px 14px; }
+
+  .card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 12px 12px 10px;
+    margin-bottom: 8px;
+  }
+  .error-line {
+    color: var(--warn); font-size: 10px; margin-bottom: 8px;
+    padding: 7px 9px; background: rgba(242,184,75,0.08);
+    border: 1px solid rgba(242,184,75,0.2); border-radius: 8px;
+  }
+
+  .server-row { display: flex; align-items: center; gap: 12px; }
+  .ring-wrap { position: relative; width: 56px; height: 56px; flex-shrink: 0; }
+  .ring-wrap svg { transform: rotate(-90deg); }
+  .ring-bg { fill: none; stroke: var(--border); stroke-width: 5; }
+  .ring-fg { fill: none; stroke: var(--warn); stroke-width: 5; stroke-linecap: round; transition: stroke-dashoffset 700ms cubic-bezier(0.22,1,0.36,1); }
+  .ring-center { position: absolute; inset: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; }
+  .ring-value { font-size: 13px; font-weight: 700; letter-spacing: -0.02em; }
+  .ring-label { font-size: 7px; color: var(--muted); text-transform: uppercase; letter-spacing: 0.05em; }
+
+  .chart-wrap { flex: 1; min-width: 0; }
+  .legend { display: flex; gap: 10px; margin-bottom: 4px; }
+  .legend-item { display: flex; align-items: center; gap: 4px; font-size: 9px; color: var(--muted); }
+  .legend-dot { width: 5px; height: 5px; border-radius: 50%; }
+  .legend-value { font-size: 11px; font-weight: 600; color: var(--text); font-variant-numeric: tabular-nums; }
+  .trend-svg { display: block; width: 100%; height: 30px; }
+  .trend-svg path.line { fill: none; stroke-width: 1.3; stroke-linejoin: round; stroke-linecap: round; }
+
+  .up-row { display: flex; justify-content: space-between; margin-top: 10px; padding-top: 8px; border-top: 1px solid var(--border); }
+  .up-row .k { font-size: 9px; color: var(--muted); }
+  .up-row .v { font-size: 9px; color: var(--text); font-variant-numeric: tabular-nums; }
+
+  .quota-head { display: flex; justify-content: space-between; align-items: baseline; margin-bottom: 6px; }
+  .quota-title { font-size: 9px; color: var(--muted); }
+  .quota-value { font-size: 10px; font-weight: 600; color: var(--text); font-variant-numeric: tabular-nums; }
+  .quota-track { height: 4px; border-radius: 2px; background: var(--border); overflow: hidden; }
+  .quota-fill { height: 100%; background: var(--cpu); border-radius: 2px; transition: width 700ms cubic-bezier(0.22,1,0.36,1), background-color 400ms ease; }
+  .quota-fill.warn { background: var(--warn); }
+  .quota-sub { font-size: 8px; color: var(--faint); margin-top: 5px; }
+
+  .section-label { font-size: 9px; color: var(--muted); margin: 10px 2px 6px; text-transform: uppercase; letter-spacing: 0.04em; }
+
+  .peer { display: grid; grid-template-columns: 1fr auto; align-items: center; gap: 10px; padding: 9px 12px; }
+  .peer + .peer { border-top: 1px solid var(--border); }
+  .peer-id { display: flex; align-items: center; gap: 7px; min-width: 0; }
+  .signal { position: relative; width: 6px; height: 6px; flex-shrink: 0; }
+  .signal-core { position: absolute; inset: 0; border-radius: 50%; background: var(--idle); transition: background-color 500ms cubic-bezier(0.22,1,0.36,1); }
+  .signal.live .signal-core { background: var(--live); }
+  .signal.live::after {
+    content: ""; position: absolute; inset: 0; border-radius: 50%;
+    border: 1px solid var(--live); animation: ping 2.4s cubic-bezier(0,0,0.2,1) infinite;
+  }
+  @keyframes ping { 0% { transform: scale(1); opacity: 0.6; } 100% { transform: scale(2.6); opacity: 0; } }
+  .peer-text { min-width: 0; }
+  .peer-name { font-size: 11px; font-weight: 500; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .peer-meta { font-size: 9px; color: var(--faint); margin-top: 1px; }
+  .peer-chart { display: flex; flex-direction: column; align-items: flex-end; gap: 2px; }
+  .peer-bytes { font-size: 8px; color: var(--muted); display: flex; gap: 6px; }
+  .spark { display: block; }
+  .spark path.line { fill: none; stroke: var(--cpu); stroke-width: 1.1; opacity: 0.9; }
+  .spark path.area { stroke: none; fill: url(#sparkGradientExt); }
+  .spark.idle path.line { stroke: var(--idle); }
+
+  .empty-state { padding: 14px 0; text-align: center; color: var(--faint); font-size: 10px; }
+
+  #settings { padding: 14px; }
+  #settings label { display: block; font-size: 10px; color: var(--muted); margin-top: 10px; }
+  #settings input {
+    width: 100%; padding: 8px 10px; border-radius: 8px; border: 1px solid var(--border);
+    background: rgba(255,255,255,0.04); color: var(--text); font-family: var(--sans);
+    font-size: 12px; margin-top: 4px; outline: none;
+    transition: border-color 200ms ease;
+  }
+  #settings input:focus { border-color: var(--cpu); }
+  #settings button {
+    width: 100%; padding: 9px; border-radius: 8px; border: none; background: var(--text);
+    color: #0a0b0d; font-weight: 600; font-size: 12px; margin-top: 12px; cursor: pointer;
+    transition: transform 100ms ease-out, opacity 150ms ease-out;
+  }
+  #settings button:active { transform: scale(0.97); opacity: 0.85; }
+</style>
+</head>
+<body>
+
+<header>
+  <img class="logo" src="icons/icon48.png" alt="">
+  <div class="status-dot" id="headerDot"></div>
+  <h1>Server-VPN Status</h1>
+  <button id="refreshBtn" title="Refresh">⟳</button>
+  <button id="gearBtn" title="Settings">⚙</button>
+</header>
+<div id="updated">Last Updated: —</div>
+
+<main id="app" style="display:none;">
+  <div id="errorBox"></div>
+
+  <div class="card">
+    <div class="server-row">
+      <div class="ring-wrap">
+        <svg width="56" height="56" viewBox="0 0 56 56">
+          <circle class="ring-bg" cx="28" cy="28" r="24"></circle>
+          <circle class="ring-fg" id="diskRing" cx="28" cy="28" r="24" stroke-dasharray="150.8" stroke-dashoffset="150.8"></circle>
+        </svg>
+        <div class="ring-center">
+          <div class="ring-value" id="diskValue">—</div>
+          <div class="ring-label">disk</div>
+        </div>
+      </div>
+      <div class="chart-wrap">
+        <div class="legend">
+          <div class="legend-item"><span class="legend-dot" style="background:var(--cpu)"></span>cpu <span class="legend-value" id="cpuValue">—</span></div>
+          <div class="legend-item"><span class="legend-dot" style="background:var(--ram)"></span>ram <span class="legend-value" id="ramValue">—</span></div>
+        </div>
+        <svg class="trend-svg" id="trendChart" viewBox="0 0 200 30" preserveAspectRatio="none"></svg>
+      </div>
+    </div>
+    <div class="up-row">
+      <span class="k">Working For:</span>
+      <span class="v" id="uptimeValue">—</span>
+    </div>
+  </div>
+
+  <div class="card" id="quotaCard" style="display:none;">
+    <div class="quota-head">
+      <span class="quota-title">Oracle Free Tier Egress</span>
+      <span class="quota-value" id="quotaValue">—</span>
+    </div>
+    <div class="quota-track"><div class="quota-fill" id="quotaFill" style="width:0%"></div></div>
+    <div class="quota-sub" id="quotaSub">—</div>
+  </div>
+
+  <div class="section-label">Devices</div>
+  <div class="card" id="peersCard" style="padding:0;">
+    <div id="peers"></div>
+  </div>
+</main>
+
+<div id="settings" style="display:none;">
+  <label>Dashboard URL (e.g. https://vpn.example.com)</label>
+  <input id="apiUrl" type="text" placeholder="https://...">
+  <label>Token</label>
+  <input id="apiToken" type="password" placeholder="Token">
+  <button id="saveBtn">Save</button>
+</div>
+
+<svg width="0" height="0" style="position:absolute">
+  <defs>
+    <linearGradient id="sparkGradientExt" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%" stop-color="#60a5fa" stop-opacity="0.35"/>
+      <stop offset="100%" stop-color="#60a5fa" stop-opacity="0"/>
+    </linearGradient>
+  </defs>
+</svg>
+
+<script src="popup.js"></script>
+</body>
+</html>

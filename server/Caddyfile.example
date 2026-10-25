@@ -1,0 +1,7 @@
+vpn.example.com {
+    reverse_proxy wg-easy:8080
+}
+
+admin.vpn.example.com {
+    reverse_proxy wg-easy:51821
+}

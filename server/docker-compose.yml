@@ -1,0 +1,35 @@
+services:
+  wg-dashboard:
+    build: ./api
+    container_name: wg-dashboard
+    restart: unless-stopped
+    network_mode: "container:wg-easy"
+    cap_add:
+      - NET_ADMIN
+    environment:
+      - DASHBOARD_TOKEN=${DASHBOARD_TOKEN}
+      - WG_INTERFACE=wg0
+      - DEVICES_FILE=/data/devices.json
+      - EGRESS_STATE_FILE=/state/egress_baseline.json
+    volumes:
+      - ./web:/web:ro
+      - ./devices.json:/data/devices.json:ro
+      - ./state:/state
+
+  caddy:
+    image: caddy:2-alpine
+    container_name: wg-dashboard-caddy
+    restart: unless-stopped
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy_data:/data
+      - caddy_config:/config
+    depends_on:
+      - wg-dashboard
+
+volumes:
+  caddy_data:
+  caddy_config:

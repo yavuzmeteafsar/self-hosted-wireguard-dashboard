@@ -1,0 +1,475 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Server-VPN Status Board</title>
+<link rel="icon" type="image/png" href="icons/icon-32.png">
+<link rel="apple-touch-icon" href="icons/apple-touch-icon.png">
+<link rel="manifest" href="manifest.json">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="VPN">
+<meta name="theme-color" content="#0a0b0d">
+<style>
+  :root {
+    --bg: #0a0b0d;
+    --surface: rgba(255,255,255,0.035);
+    --surface-hover: rgba(255,255,255,0.055);
+    --border: rgba(255,255,255,0.08);
+    --text: #f4f4f2;
+    --muted: #8a8d93;
+    --faint: #55585e;
+    --cpu: #60a5fa;
+    --ram: #c084fc;
+    --live: #34d399;
+    --idle: #3f4247;
+    --warn: #f2b84b;
+    --sans: -apple-system, BlinkMacSystemFont, "SF Pro Text", "Inter", "Segoe UI", sans-serif;
+  }
+  * { box-sizing: border-box; }
+  html, body { margin: 0; background: var(--bg); }
+  body {
+    font-family: var(--sans);
+    color: var(--text);
+    -webkit-font-smoothing: antialiased;
+    display: flex;
+    justify-content: center;
+    padding: 32px 16px 60px;
+  }
+  .app { width: 100%; max-width: 460px; }
+
+  header { display: flex; align-items: center; gap: 10px; margin-bottom: 22px; }
+  .logo { width: 28px; height: 28px; flex-shrink: 0; }
+  .status-dot {
+    width: 8px; height: 8px; border-radius: 50%;
+    background: var(--idle);
+    transition: background-color 500ms cubic-bezier(0.22,1,0.36,1), box-shadow 500ms cubic-bezier(0.22,1,0.36,1);
+  }
+  .status-dot.live { background: var(--live); box-shadow: 0 0 10px rgba(52,211,153,0.5); }
+  h1 {
+    font-size: 15px;
+    font-weight: 600;
+    letter-spacing: -0.01em;
+    margin: 0;
+    flex: 1;
+  }
+  .updated { font-size: 11px; color: var(--faint); font-variant-numeric: tabular-nums; }
+
+  .card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 16px;
+    padding: 18px 18px 16px;
+    margin-bottom: 12px;
+  }
+
+  .error-line {
+    color: var(--warn);
+    font-size: 12px;
+    margin-bottom: 12px;
+    padding: 10px 12px;
+    background: rgba(242,184,75,0.08);
+    border: 1px solid rgba(242,184,75,0.2);
+    border-radius: 10px;
+  }
+
+  /* -- server card -- */
+  .server-grid {
+    display: grid;
+    grid-template-columns: 88px 1fr;
+    gap: 18px;
+    align-items: center;
+  }
+  .ring-wrap { position: relative; width: 88px; height: 88px; }
+  .ring-wrap svg { transform: rotate(-90deg); }
+  .ring-bg { fill: none; stroke: var(--border); stroke-width: 7; }
+  .ring-fg { fill: none; stroke: var(--warn); stroke-width: 7; stroke-linecap: round; transition: stroke-dashoffset 700ms cubic-bezier(0.22,1,0.36,1); }
+  .ring-center {
+    position: absolute; inset: 0;
+    display: flex; flex-direction: column; align-items: center; justify-content: center;
+  }
+  .ring-value { font-size: 19px; font-weight: 700; letter-spacing: -0.02em; font-variant-numeric: tabular-nums; }
+  .ring-label { font-size: 9px; color: var(--muted); text-transform: uppercase; letter-spacing: 0.06em; margin-top: 1px; }
+
+  .chart-wrap { min-width: 0; }
+  .legend { display: flex; gap: 14px; margin-bottom: 6px; }
+  .legend-item { display: flex; align-items: center; gap: 5px; font-size: 11px; color: var(--muted); }
+  .legend-dot { width: 6px; height: 6px; border-radius: 50%; }
+  .legend-value { font-size: 13px; font-weight: 600; color: var(--text); font-variant-numeric: tabular-nums; }
+  .trend-svg { display: block; width: 100%; height: 46px; }
+  .trend-svg path.line { fill: none; stroke-width: 1.6; stroke-linejoin: round; stroke-linecap: round; }
+  .trend-svg path.area { stroke: none; }
+
+  .up-row { display: flex; justify-content: space-between; margin-top: 12px; padding-top: 12px; border-top: 1px solid var(--border); }
+  .up-row .k { font-size: 11px; color: var(--muted); }
+  .up-row .v { font-size: 11px; color: var(--text); font-variant-numeric: tabular-nums; }
+
+  .quota-head { display: flex; justify-content: space-between; align-items: baseline; margin-bottom: 8px; }
+  .quota-title { font-size: 12px; color: var(--muted); }
+  .quota-value { font-size: 13px; font-weight: 600; color: var(--text); font-variant-numeric: tabular-nums; }
+  .quota-track { height: 6px; border-radius: 3px; background: var(--border); overflow: hidden; }
+  .quota-fill { height: 100%; background: var(--cpu); border-radius: 3px; transition: width 700ms cubic-bezier(0.22,1,0.36,1), background-color 400ms ease; }
+  .quota-fill.warn { background: var(--warn); }
+  .quota-sub { font-size: 10px; color: var(--faint); margin-top: 6px; }
+
+  /* -- devices -- */
+  .section-label {
+    font-size: 11px;
+    color: var(--muted);
+    margin: 20px 2px 8px;
+  }
+  .peer {
+    display: grid;
+    grid-template-columns: 1fr auto;
+    align-items: center;
+    gap: 12px;
+    padding: 13px 16px;
+  }
+  .peer + .peer { border-top: 1px solid var(--border); }
+  .peer-id { display: flex; align-items: center; gap: 9px; min-width: 0; }
+  .signal { position: relative; width: 7px; height: 7px; flex-shrink: 0; }
+  .signal-core {
+    position: absolute; inset: 0; border-radius: 50%; background: var(--idle);
+    transition: background-color 500ms cubic-bezier(0.22,1,0.36,1);
+  }
+  .signal.live .signal-core { background: var(--live); }
+  .signal.live::after {
+    content: ""; position: absolute; inset: 0; border-radius: 50%;
+    border: 1px solid var(--live);
+    animation: ping 2.4s cubic-bezier(0,0,0.2,1) infinite;
+  }
+  @keyframes ping { 0% { transform: scale(1); opacity: 0.6; } 100% { transform: scale(2.8); opacity: 0; } }
+
+  .peer-text { min-width: 0; }
+  .peer-name { font-size: 13px; font-weight: 500; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .peer-meta { font-size: 11px; color: var(--faint); margin-top: 1px; }
+
+  .peer-chart { display: flex; flex-direction: column; align-items: flex-end; gap: 3px; }
+  .peer-bytes { font-size: 10px; color: var(--muted); display: flex; gap: 8px; }
+  .spark { display: block; }
+  .spark path.line { fill: none; stroke: var(--cpu); stroke-width: 1.3; opacity: 0.9; }
+  .spark path.area { stroke: none; fill: url(#sparkGradient); }
+  .spark.idle path.line { stroke: var(--idle); }
+
+  .empty-state { padding: 20px 0; text-align: center; color: var(--faint); font-size: 12px; }
+
+  /* -- login -- */
+  #login .card {
+    max-width: 320px;
+    margin: 90px auto 0;
+    padding: 26px 22px;
+    text-align: center;
+  }
+  #login h2 { font-size: 15px; font-weight: 600; margin: 0 0 4px; }
+  #login p { font-size: 12px; color: var(--muted); margin: 0 0 16px; }
+  #login input {
+    width: 100%;
+    padding: 11px 13px;
+    border-radius: 10px;
+    border: 1px solid var(--border);
+    background: rgba(255,255,255,0.04);
+    color: var(--text);
+    font-family: var(--sans);
+    font-size: 14px;
+    outline: none;
+    transition: border-color 200ms ease, background-color 200ms ease;
+  }
+  #login input:focus { border-color: var(--cpu); background: rgba(255,255,255,0.06); }
+  #login button {
+    width: 100%;
+    margin-top: 10px;
+    padding: 11px;
+    border-radius: 10px;
+    border: none;
+    background: var(--text);
+    color: #0a0b0d;
+    font-family: var(--sans);
+    font-size: 13px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: transform 100ms ease-out, opacity 150ms ease-out;
+  }
+  #login button:active { transform: scale(0.97); opacity: 0.85; }
+
+  @media (prefers-reduced-motion: reduce) {
+    .signal.live::after { animation: none; }
+    .ring-fg { transition: none; }
+  }
+</style>
+</head>
+<body>
+
+<div class="app" id="login" style="display:none;">
+  <div class="card">
+    <h2>Sign in required</h2>
+    <p>Enter your access token</p>
+    <input id="tokenInput" type="password" placeholder="Token" autocapitalize="off" autocorrect="off" spellcheck="false">
+    <button onclick="saveToken()">Continue</button>
+  </div>
+</div>
+
+<div class="app" id="app" style="display:none;">
+  <header>
+    <img class="logo" src="icons/icon-40.png" alt="">
+    <div class="status-dot" id="headerDot"></div>
+    <h1>Server-VPN Status Board</h1>
+    <span class="updated">Last Update: <span id="updated">—</span></span>
+  </header>
+
+  <div id="errorBox"></div>
+
+  <div class="card">
+    <div class="server-grid">
+      <div class="ring-wrap">
+        <svg width="88" height="88" viewBox="0 0 88 88">
+          <circle class="ring-bg" cx="44" cy="44" r="38"></circle>
+          <circle class="ring-fg" id="diskRing" cx="44" cy="44" r="38" stroke-dasharray="238.76" stroke-dashoffset="238.76"></circle>
+        </svg>
+        <div class="ring-center">
+          <div class="ring-value" id="diskValue">—</div>
+          <div class="ring-label">disk</div>
+        </div>
+      </div>
+      <div class="chart-wrap">
+        <div class="legend">
+          <div class="legend-item"><span class="legend-dot" style="background:var(--cpu)"></span>cpu <span class="legend-value" id="cpuValue">—</span></div>
+          <div class="legend-item"><span class="legend-dot" style="background:var(--ram)"></span>ram <span class="legend-value" id="ramValue">—</span></div>
+        </div>
+        <svg class="trend-svg" id="trendChart" viewBox="0 0 200 46" preserveAspectRatio="none"></svg>
+      </div>
+    </div>
+    <div class="up-row">
+      <span class="k">Working For:</span>
+      <span class="v" id="uptimeValue">—</span>
+    </div>
+  </div>
+
+  <div class="card" id="quotaCard" style="display:none;">
+    <div class="quota-head">
+      <span class="quota-title">Oracle Free Tier — Outbound Data</span>
+      <span class="quota-value" id="quotaValue">—</span>
+    </div>
+    <div class="quota-track"><div class="quota-fill" id="quotaFill" style="width:0%"></div></div>
+    <div class="quota-sub" id="quotaSub">—</div>
+  </div>
+
+  <div class="section-label">Devices</div>
+  <div class="card" id="peersCard" style="padding:0;">
+    <div id="peers"></div>
+  </div>
+</div>
+
+<svg width="0" height="0" style="position:absolute">
+  <defs>
+    <linearGradient id="sparkGradient" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%" stop-color="#60a5fa" stop-opacity="0.35"/>
+      <stop offset="100%" stop-color="#60a5fa" stop-opacity="0"/>
+    </linearGradient>
+  </defs>
+</svg>
+
+<script>
+const TOKEN_KEY = "vpn_dashboard_token";
+const cpuHistory = [];
+const ramHistory = [];
+const peerHistory = {};
+const MAX_POINTS = 24;
+
+function getToken() { return localStorage.getItem(TOKEN_KEY); }
+function saveToken() {
+  const val = document.getElementById("tokenInput").value.trim();
+  if (!val) return;
+  localStorage.setItem(TOKEN_KEY, val);
+  init();
+}
+
+function fmtBytes(bytes) {
+  if (bytes === 0) return "0 B";
+  const units = ["B", "KB", "MB", "GB", "TB"];
+  const i = Math.floor(Math.log(bytes) / Math.log(1024));
+  return (bytes / Math.pow(1024, i)).toFixed(1) + " " + units[i];
+}
+
+function fmtRelative(unixSeconds) {
+  if (!unixSeconds) return "never";
+  const diff = Math.floor(Date.now() / 1000) - unixSeconds;
+  if (diff < 60) return diff + "s ago";
+  if (diff < 3600) return Math.floor(diff / 60) + "m ago";
+  if (diff < 86400) return Math.floor(diff / 3600) + "h ago";
+  return Math.floor(diff / 86400) + "d ago";
+}
+
+function fmtUptime(seconds) {
+  const d = Math.floor(seconds / 86400);
+  const h = Math.floor((seconds % 86400) / 3600);
+  const m = Math.floor((seconds % 3600) / 60);
+  if (d > 0) return `${d}d ${h}h`;
+  if (h > 0) return `${h}h ${m}m`;
+  return `${m}m`;
+}
+
+function fmtGB(bytes) {
+  return (bytes / 1024 ** 3).toFixed(1) + " GB";
+}
+
+// Smooth path through points using quadratic midpoint smoothing.
+function smoothPath(pts) {
+  if (pts.length < 2) return "";
+  let d = `M ${pts[0][0]} ${pts[0][1]}`;
+  for (let i = 0; i < pts.length - 1; i++) {
+    const [x0, y0] = pts[i];
+    const [x1, y1] = pts[i + 1];
+    const mx = (x0 + x1) / 2;
+    const my = (y0 + y1) / 2;
+    d += ` Q ${x0} ${y0} ${mx} ${my}`;
+  }
+  const last = pts[pts.length - 1];
+  d += ` L ${last[0]} ${last[1]}`;
+  return d;
+}
+
+function renderTrend() {
+  const w = 200, h = 46;
+  const n = Math.max(cpuHistory.length, ramHistory.length, 2);
+  const step = w / (Math.max(n, 2) - 1);
+
+  function toPoints(series) {
+    const padded = Array(n - series.length).fill(series[0] ?? 0).concat(series);
+    return padded.map((v, i) => [i * step, h - (v / 100) * (h - 4) - 2]);
+  }
+
+  const cpuPts = toPoints(cpuHistory.length ? cpuHistory : [0]);
+  const ramPts = toPoints(ramHistory.length ? ramHistory : [0]);
+
+  const svg = document.getElementById("trendChart");
+  svg.innerHTML = `
+    <path class="line" d="${smoothPath(ramPts)}" stroke="var(--ram)" opacity="0.85"></path>
+    <path class="line" d="${smoothPath(cpuPts)}" stroke="var(--cpu)"></path>
+  `;
+}
+
+function sparkline(points, w = 64, h = 22) {
+  if (points.length < 2) return `<svg class="spark idle" width="${w}" height="${h}"></svg>`;
+  const max = Math.max(...points, 1);
+  const step = w / (points.length - 1);
+  const pts = points.map((v, i) => [i * step, h - (v / max) * (h - 3) - 1]);
+  const linePath = smoothPath(pts);
+  const areaPath = `${linePath} L ${w} ${h} L 0 ${h} Z`;
+  const isIdle = max <= 1;
+  return `<svg class="spark ${isIdle ? "idle" : ""}" width="${w}" height="${h}" viewBox="0 0 ${w} ${h}">
+    <path class="area" d="${areaPath}"></path>
+    <path class="line" d="${linePath}"></path>
+  </svg>`;
+}
+
+function updatePeerHistory(peer) {
+  const key = peer.allowed_ips;
+  const prev = peerHistory[key];
+  const total = peer.rx_bytes + peer.tx_bytes;
+  let delta = 0;
+  if (prev && prev.lastTotal !== undefined) delta = Math.max(0, total - prev.lastTotal);
+  if (!peerHistory[key]) peerHistory[key] = { points: [], lastTotal: total };
+  peerHistory[key].points.push(delta);
+  if (peerHistory[key].points.length > MAX_POINTS) peerHistory[key].points.shift();
+  peerHistory[key].lastTotal = total;
+  return peerHistory[key].points;
+}
+
+function peerRow(p) {
+  const points = updatePeerHistory(p);
+  return `<div class="peer">
+    <div class="peer-id">
+      <div class="signal ${p.connected ? "live" : ""}"><div class="signal-core"></div></div>
+      <div class="peer-text">
+        <div class="peer-name">${p.name}</div>
+        <div class="peer-meta">${p.allowed_ips.replace("/32", "")} · ${fmtRelative(p.latest_handshake)}</div>
+      </div>
+    </div>
+    <div class="peer-chart">
+      ${sparkline(points)}
+      <div class="peer-bytes"><span>↓${fmtBytes(p.rx_bytes)}</span><span>↑${fmtBytes(p.tx_bytes)}</span></div>
+    </div>
+  </div>`;
+}
+
+async function refresh() {
+  const token = getToken();
+  if (!token) return showLogin();
+
+  try {
+    const res = await fetch("/api/status", {
+      headers: { Authorization: "Bearer " + token }
+    });
+    if (res.status === 401) {
+      localStorage.removeItem(TOKEN_KEY);
+      return showLogin();
+    }
+    const data = await res.json();
+
+    document.getElementById("errorBox").innerHTML = data.wg_error
+      ? `<div class="error-line">wg show error: ${data.wg_error}</div>` : "";
+
+    const s = data.system;
+
+    cpuHistory.push(s.cpu_percent);
+    ramHistory.push(s.memory_percent);
+    if (cpuHistory.length > MAX_POINTS) cpuHistory.shift();
+    if (ramHistory.length > MAX_POINTS) ramHistory.shift();
+
+    document.getElementById("cpuValue").textContent = s.cpu_percent.toFixed(0) + "%";
+    document.getElementById("ramValue").textContent = s.memory_percent.toFixed(0) + "%";
+    document.getElementById("uptimeValue").textContent = fmtUptime(s.uptime_seconds);
+    renderTrend();
+
+    const circumference = 238.76;
+    const offset = circumference - (s.disk_percent / 100) * circumference;
+    document.getElementById("diskRing").style.strokeDashoffset = offset;
+    document.getElementById("diskValue").textContent = s.disk_percent.toFixed(0) + "%";
+
+    const anyLive = data.peers.some(p => p.connected);
+    document.getElementById("headerDot").classList.toggle("live", anyLive);
+
+    if (data.egress) {
+      const q = data.egress;
+      document.getElementById("quotaCard").style.display = "block";
+      document.getElementById("quotaValue").textContent = `${fmtGB(q.used_bytes)} / 10 TB`;
+      const fill = document.getElementById("quotaFill");
+      fill.style.width = q.percent + "%";
+      fill.classList.toggle("warn", q.percent >= 80);
+      document.getElementById("quotaSub").textContent =
+        `${q.percent}% used this month (${q.month})`;
+    } else if (data.egress_error) {
+      document.getElementById("quotaCard").style.display = "none";
+    }
+
+    document.getElementById("peers").innerHTML =
+      data.peers.length ? data.peers.map(peerRow).join("") :
+      `<div class="empty-state">No devices found</div>`;
+
+    document.getElementById("updated").textContent =
+      new Date(data.generated_at * 1000).toLocaleTimeString("en-GB", { hour12: false });
+
+    document.getElementById("login").style.display = "none";
+    document.getElementById("app").style.display = "block";
+  } catch (e) {
+    document.getElementById("errorBox").innerHTML =
+      `<div class="error-line">Could not reach server: ${e.message}</div>`;
+  }
+}
+
+function showLogin() {
+  document.getElementById("app").style.display = "none";
+  document.getElementById("login").style.display = "block";
+}
+
+function init() {
+  if (!getToken()) return showLogin();
+  refresh();
+  setInterval(refresh, 10000);
+}
+
+init();
+</script>
+</body>
+</html>
