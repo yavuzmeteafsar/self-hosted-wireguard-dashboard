@@ -187,6 +187,18 @@ async function refresh() {
       document.getElementById("quotaCard").style.display = "none";
     }
 
+    if (data.cost) {
+      const c = data.cost;
+      document.getElementById("costCard").style.display = "block";
+      const v = document.getElementById("costValue");
+      v.textContent = new Intl.NumberFormat("en-GB", { style: "currency", currency: c.currency }).format(c.amount);
+      v.style.color = c.amount > 0 ? "var(--warn)" : "";
+      const t = new Date(c.updated_at * 1000).toLocaleTimeString("en-GB", { hour: "2-digit", minute: "2-digit", hour12: false });
+      document.getElementById("costSub").textContent = `${c.month} · updated ${t}`;
+    } else {
+      document.getElementById("costCard").style.display = "none";
+    }
+
     document.getElementById("peers").innerHTML =
       data.peers.length ? data.peers.map(peerRow).join("") :
       `<div class="empty-state">No devices found</div>`;
