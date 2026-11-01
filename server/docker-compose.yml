@@ -11,6 +11,7 @@ services:
       - WG_INTERFACE=wg0
       - DEVICES_FILE=/data/devices.json
       - EGRESS_STATE_FILE=/state/egress_baseline.json
+      - COST_ENABLED=${COST_ENABLED:-false}
     volumes:
       - ./web:/web:ro
       - ./devices.json:/data/devices.json:ro

@@ -254,6 +254,14 @@
     <div class="quota-sub" id="quotaSub">—</div>
   </div>
 
+  <div class="card" id="costCard" style="display:none;">
+    <div class="quota-head">
+      <span class="quota-title">Oracle Cloud — This Month's Cost</span>
+      <span class="quota-value" id="costValue">—</span>
+    </div>
+    <div class="quota-sub" id="costSub">—</div>
+  </div>
+
   <div class="section-label">Devices</div>
   <div class="card" id="peersCard" style="padding:0;">
     <div id="peers"></div>
@@ -441,6 +449,18 @@ async function refresh() {
         `${q.percent}% used this month (${q.month})`;
     } else if (data.egress_error) {
       document.getElementById("quotaCard").style.display = "none";
+    }
+
+    if (data.cost) {
+      const c = data.cost;
+      document.getElementById("costCard").style.display = "block";
+      const v = document.getElementById("costValue");
+      v.textContent = new Intl.NumberFormat("en-GB", { style: "currency", currency: c.currency }).format(c.amount);
+      v.style.color = c.amount > 0 ? "var(--warn)" : "";
+      const t = new Date(c.updated_at * 1000).toLocaleTimeString("en-GB", { hour: "2-digit", minute: "2-digit", hour12: false });
+      document.getElementById("costSub").textContent = `${c.month} · updated ${t} · refreshes every 6h`;
+    } else {
+      document.getElementById("costCard").style.display = "none";
     }
 
     document.getElementById("peers").innerHTML =

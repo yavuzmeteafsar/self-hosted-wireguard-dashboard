@@ -230,3 +230,14 @@ A peer counts as connected if its last handshake was less than 3 minutes ago.
 ## License
 
 [MIT](LICENSE) © 2026 Yavuz Mete Afşar
+
+## Optional: Oracle Cloud cost card
+
+The dashboard can show this month's Oracle Cloud cost via the OCI Usage API. It authenticates with Instance Principals, so no API keys are stored on the server. Disabled by default.
+
+1. Get your instance OCID on the VM: `curl -s -H "Authorization: Bearer Oracle" http://169.254.169.254/opc/v2/instance/id`
+2. OCI Console → Identity & Security → Domains → Default → Dynamic groups: create `wg-dashboard-dg` with the rule `instance.id = '<your-instance-ocid>'`
+3. In the root compartment, create a policy: `Allow dynamic-group wg-dashboard-dg to read usage-report in tenancy`
+4. Set `COST_ENABLED=true` in `server/.env` and rebuild: `docker compose up -d --build wg-dashboard`
+
+Cost data is cached for 6 hours. Oracle's billing data can lag by up to 24 hours.

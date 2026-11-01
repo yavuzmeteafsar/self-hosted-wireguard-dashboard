@@ -205,3 +205,14 @@ Bir peer'ın son el sıkışması 3 dakikadan yeniyse bağlı sayılır.
 ## Lisans
 
 [MIT](LICENSE) © 2026 Yavuz Mete Afşar
+
+## Opsiyonel: Oracle Cloud maliyet kartı
+
+Dashboard, bu ayın Oracle Cloud maliyetini OCI Usage API ile gösterebilir. Kimlik doğrulama Instance Principals ile yapılır, sunucuda API anahtarı saklanmaz. Varsayılan olarak kapalıdır.
+
+1. VM'de instance OCID'ni al: `curl -s -H "Authorization: Bearer Oracle" http://169.254.169.254/opc/v2/instance/id`
+2. OCI Console → Identity & Security → Domains → Default → Dynamic groups: `instance.id = '<instance-ocid>'` kuralıyla `wg-dashboard-dg` grubunu oluştur
+3. Root compartment'ta şu policy'yi oluştur: `Allow dynamic-group wg-dashboard-dg to read usage-report in tenancy`
+4. `server/.env` içinde `COST_ENABLED=true` yap ve yeniden build et: `docker compose up -d --build wg-dashboard`
+
+Maliyet verisi 6 saat önbellekte tutulur. Oracle'ın fatura verisi 24 saate kadar gecikebilir.

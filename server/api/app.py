@@ -18,6 +18,12 @@ EGRESS_STATE_FILE = os.environ.get("EGRESS_STATE_FILE", "/state/egress_baseline.
 EGRESS_LIMIT_BYTES = 10 * 1024**4  # Oracle Always Free: 10 TB outbound per month
 
 
+COST_ENABLED = os.environ.get("COST_ENABLED", "false").lower() == "true"
+COST_CACHE_SECONDS = 6 * 3600
+COST_RETRY_SECONDS = 600
+_cost_cache = {"ts": 0, "data": None, "error": None}
+
+
 def load_device_names():
     try:
         with open(DEVICES_FILE, "r") as f:
@@ -126,6 +132,43 @@ def get_monthly_egress(total_tx_bytes):
     }
 
 
+def get_monthly_cost():
+    if not COST_ENABLED:
+        return None
+    now = time.time()
+    ttl = COST_RETRY_SECONDS if _cost_cache["error"] else COST_CACHE_SECONDS
+    if _cost_cache["ts"] and now - _cost_cache["ts"] < ttl:
+        if _cost_cache["error"] and _cost_cache["data"] is None:
+            raise RuntimeError(_cost_cache["error"])
+        return _cost_cache["data"]
+    try:
+        import datetime as dt
+        import oci
+        signer = oci.auth.signers.InstancePrincipalsSecurityTokenSigner()
+        client = oci.usage_api.UsageapiClient(config={}, signer=signer)
+        today = dt.datetime.now(dt.timezone.utc).replace(hour=0, minute=0, second=0, microsecond=0)
+        start = today.replace(day=1)
+        end = today + dt.timedelta(days=1)
+        details = oci.usage_api.models.RequestSummarizedUsagesDetails(
+            tenant_id=signer.tenancy_id,
+            time_usage_started=start,
+            time_usage_ended=end,
+            granularity="DAILY",
+            query_type="COST",
+        )
+        items = client.request_summarized_usages(details).data.items
+        amount = sum((i.computed_amount or 0) for i in items)
+        currency = next((i.currency for i in items if i.currency), None) or "EUR"
+        data = {"amount": round(amount, 2), "currency": currency, "month": start.strftime("%Y-%m"), "updated_at": int(now)}
+        _cost_cache.update(ts=now, data=data, error=None)
+        return data
+    except Exception as exc:
+        _cost_cache.update(ts=now, error=str(exc))
+        if _cost_cache["data"] is not None:
+            return _cost_cache["data"]
+        raise
+
+
 @app.route("/api/status")
 @require_token
 def status():
@@ -144,6 +187,13 @@ def status():
         egress = None
         egress_error = str(exc)
 
+    try:
+        cost = get_monthly_cost()
+        cost_error = None
+    except Exception as exc:
+        cost = None
+        cost_error = str(exc)
+
     return jsonify(
         {
             "peers": peers,
@@ -151,6 +201,8 @@ def status():
             "system": get_system_stats(),
             "egress": egress,
             "egress_error": egress_error,
+            "cost": cost,
+            "cost_error": cost_error,
             "generated_at": int(time.time()),
         }
     )
