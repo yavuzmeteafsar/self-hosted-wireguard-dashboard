@@ -80,7 +80,8 @@ def get_wg_peers():
             }
         )
 
-    peers.sort(key=lambda p: p["name"])
+    order = list(names)
+    peers.sort(key=lambda p: (order.index(p["allowed_ips"]) if p["allowed_ips"] in order else len(order), p["name"]))
     return peers
 
 
