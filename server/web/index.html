@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="tr">
+<html lang="en">
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
@@ -8,193 +8,216 @@
 <link rel="apple-touch-icon" href="icons/apple-touch-icon.png">
 <link rel="manifest" href="manifest.json">
 <meta name="apple-mobile-web-app-capable" content="yes">
-<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
 <meta name="apple-mobile-web-app-title" content="VPN">
-<meta name="theme-color" content="#0a0b0d">
+<meta name="theme-color" content="#E4E4FF" media="(prefers-color-scheme: light)">
+<meta name="theme-color" content="#0D0C22" media="(prefers-color-scheme: dark)">
 <style>
   :root {
-    --bg: #0a0b0d;
-    --surface: rgba(255,255,255,0.035);
-    --surface-hover: rgba(255,255,255,0.055);
-    --border: rgba(255,255,255,0.08);
-    --text: #f4f4f2;
-    --muted: #8a8d93;
-    --faint: #55585e;
-    --cpu: #60a5fa;
-    --ram: #c084fc;
-    --live: #34d399;
-    --idle: #3f4247;
-    --warn: #f2b84b;
+    --periwinkle: #6260FF;
+    --lavender: #E4E4FF;
+    --bg: #F3F3FF;
+    --bg-top: #E4E4FF;
+    --card: #FFFFFF;
+    --card-press: #F7F7FF;
+    --material: rgba(243,243,255,0.72);
+    --separator: rgba(98,96,255,0.12);
+    --text: #15143A;
+    --muted: #6A6992;
+    --faint: #A2A1C4;
+    --accent: #6260FF;
+    --accent-2: #A9A8FF;
+    --accent-soft: #E4E4FF;
+    --track: #ECECFF;
+    --live: #34C759;
+    --warn: #FF9500;
+    --shadow: 0 1px 2px rgba(35,33,110,0.05), 0 10px 30px -12px rgba(98,96,255,0.22);
     --sans: -apple-system, BlinkMacSystemFont, "SF Pro Text", "Inter", "Segoe UI", sans-serif;
+    --display: -apple-system, BlinkMacSystemFont, "SF Pro Display", "Inter", "Segoe UI", sans-serif;
+    --spring: cubic-bezier(0.22, 1, 0.36, 1);
+    color-scheme: light dark;
   }
-  * { box-sizing: border-box; }
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --bg: #0D0C22;
+      --bg-top: #1B1950;
+      --card: rgba(228,228,255,0.055);
+      --card-press: rgba(228,228,255,0.09);
+      --material: rgba(13,12,34,0.68);
+      --separator: rgba(228,228,255,0.08);
+      --text: #F2F2FF;
+      --muted: #9F9EC8;
+      --faint: #5F5E8A;
+      --accent: #8583FF;
+      --accent-2: #4B49B8;
+      --accent-soft: rgba(98,96,255,0.2);
+      --track: rgba(228,228,255,0.08);
+      --live: #30D158;
+      --warn: #FF9F0A;
+      --shadow: 0 0 0 1px rgba(228,228,255,0.06);
+    }
+  }
+
+  * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
   html, body { margin: 0; background: var(--bg); }
   body {
-    font-family: var(--sans);
+    font: 100%/1.4 var(--sans);
     color: var(--text);
     -webkit-font-smoothing: antialiased;
-    display: flex;
-    justify-content: center;
-    padding: 32px 16px 60px;
+    min-height: 100vh;
+    background:
+      radial-gradient(120% 60% at 50% -10%, var(--bg-top) 0%, transparent 70%),
+      var(--bg);
+    background-attachment: fixed;
   }
-  .app { width: 100%; max-width: 460px; }
+  .app { width: 100%; max-width: 480px; margin: 0 auto; padding: 0 16px 56px; }
 
-  header { display: flex; align-items: center; gap: 10px; margin-bottom: 22px; }
-  .logo { width: 28px; height: 28px; flex-shrink: 0; }
-  .status-dot {
-    width: 8px; height: 8px; border-radius: 50%;
-    background: var(--idle);
-    transition: background-color 500ms cubic-bezier(0.22,1,0.36,1), box-shadow 500ms cubic-bezier(0.22,1,0.36,1);
+  .bar {
+    position: sticky; top: 0; z-index: 10;
+    display: flex; align-items: center; gap: 10px;
+    padding: calc(env(safe-area-inset-top) + 12px) 16px 12px;
+    margin: 0 -16px;
+    background: var(--material);
+    -webkit-backdrop-filter: blur(20px) saturate(180%);
+    backdrop-filter: blur(20px) saturate(180%);
+    -webkit-mask-image: linear-gradient(to bottom, #000 80%, transparent);
+    mask-image: linear-gradient(to bottom, #000 80%, transparent);
   }
-  .status-dot.live { background: var(--live); box-shadow: 0 0 10px rgba(52,211,153,0.5); }
+  .logo { width: 28px; height: 28px; border-radius: 8px; flex-shrink: 0; }
+  .bar-title { font-size: 0.9375rem; font-weight: 600; letter-spacing: -0.01em; flex: 1; }
+  .pill {
+    display: inline-flex; align-items: center; gap: 6px;
+    font-size: 0.75rem; font-weight: 500; color: var(--muted);
+    background: var(--card); box-shadow: var(--shadow);
+    padding: 5px 10px; border-radius: 999px;
+    font-variant-numeric: tabular-nums;
+  }
+
+  .hero { padding: 18px 2px 18px; }
   h1 {
-    font-size: 15px;
-    font-weight: 600;
-    letter-spacing: -0.01em;
-    margin: 0;
-    flex: 1;
+    font-family: var(--display);
+    font-size: 2.125rem; line-height: 1.08; font-weight: 700;
+    letter-spacing: -0.025em; margin: 0;
   }
-  .updated { font-size: 11px; color: var(--faint); font-variant-numeric: tabular-nums; }
+  .subtitle { display: flex; align-items: center; gap: 8px; margin-top: 6px; font-size: 0.9375rem; color: var(--muted); }
+  .status-dot { width: 8px; height: 8px; border-radius: 50%; background: var(--faint); transition: background-color 500ms var(--spring), box-shadow 500ms var(--spring); }
+  .status-dot.live { background: var(--live); box-shadow: 0 0 0 4px color-mix(in srgb, var(--live) 18%, transparent); }
 
   .card {
-    background: var(--surface);
-    border: 1px solid var(--border);
-    border-radius: 16px;
-    padding: 18px 18px 16px;
+    background: var(--card);
+    border-radius: 22px;
+    box-shadow: var(--shadow);
+    padding: 18px;
     margin-bottom: 12px;
   }
+  .eyebrow { font-size: 0.6875rem; font-weight: 600; letter-spacing: 0.04em; text-transform: uppercase; color: var(--muted); }
 
   .error-line {
-    color: var(--warn);
-    font-size: 12px;
-    margin-bottom: 12px;
-    padding: 10px 12px;
-    background: rgba(242,184,75,0.08);
-    border: 1px solid rgba(242,184,75,0.2);
-    border-radius: 10px;
+    color: var(--warn); font-size: 0.8125rem; font-weight: 500;
+    margin-bottom: 12px; padding: 12px 14px; border-radius: 14px;
+    background: color-mix(in srgb, var(--warn) 12%, var(--card));
   }
 
-  /* -- server card -- */
-  .server-grid {
-    display: grid;
-    grid-template-columns: 88px 1fr;
-    gap: 18px;
-    align-items: center;
-  }
-  .ring-wrap { position: relative; width: 88px; height: 88px; }
+  .server-grid { display: grid; grid-template-columns: 104px 1fr; gap: 18px; align-items: center; }
+  .ring-wrap { position: relative; width: 104px; height: 104px; }
   .ring-wrap svg { transform: rotate(-90deg); }
-  .ring-bg { fill: none; stroke: var(--border); stroke-width: 7; }
-  .ring-fg { fill: none; stroke: var(--warn); stroke-width: 7; stroke-linecap: round; transition: stroke-dashoffset 700ms cubic-bezier(0.22,1,0.36,1); }
-  .ring-center {
-    position: absolute; inset: 0;
-    display: flex; flex-direction: column; align-items: center; justify-content: center;
-  }
-  .ring-value { font-size: 19px; font-weight: 700; letter-spacing: -0.02em; font-variant-numeric: tabular-nums; }
-  .ring-label { font-size: 9px; color: var(--muted); text-transform: uppercase; letter-spacing: 0.06em; margin-top: 1px; }
+  .ring-bg { fill: none; stroke: var(--track); stroke-width: 10; }
+  .ring-fg { fill: none; stroke: url(#ringGradient); stroke-width: 10; stroke-linecap: round; transition: stroke-dashoffset 900ms var(--spring); }
+  .ring-center { position: absolute; inset: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; }
+  .ring-value { font-family: var(--display); font-size: 1.5rem; font-weight: 700; letter-spacing: -0.03em; font-variant-numeric: tabular-nums; }
+  .ring-label { font-size: 0.6875rem; color: var(--muted); font-weight: 500; }
 
   .chart-wrap { min-width: 0; }
-  .legend { display: flex; gap: 14px; margin-bottom: 6px; }
-  .legend-item { display: flex; align-items: center; gap: 5px; font-size: 11px; color: var(--muted); }
-  .legend-dot { width: 6px; height: 6px; border-radius: 50%; }
-  .legend-value { font-size: 13px; font-weight: 600; color: var(--text); font-variant-numeric: tabular-nums; }
-  .trend-svg { display: block; width: 100%; height: 46px; }
-  .trend-svg path.line { fill: none; stroke-width: 1.6; stroke-linejoin: round; stroke-linecap: round; }
-  .trend-svg path.area { stroke: none; }
+  .metrics { display: flex; gap: 18px; margin-bottom: 8px; }
+  .metric .eyebrow { display: flex; align-items: center; gap: 5px; }
+  .legend-dot { width: 7px; height: 7px; border-radius: 50%; }
+  .metric-value { font-family: var(--display); font-size: 1.375rem; font-weight: 700; letter-spacing: -0.025em; font-variant-numeric: tabular-nums; margin-top: 1px; }
+  .trend-svg { display: block; width: 100%; height: 52px; overflow: visible; }
+  .trend-svg path.line { fill: none; stroke-width: 2; stroke-linejoin: round; stroke-linecap: round; vector-effect: non-scaling-stroke; }
 
-  .up-row { display: flex; justify-content: space-between; margin-top: 12px; padding-top: 12px; border-top: 1px solid var(--border); }
-  .up-row .k { font-size: 11px; color: var(--muted); }
-  .up-row .v { font-size: 11px; color: var(--text); font-variant-numeric: tabular-nums; }
+  .up-row { display: flex; justify-content: space-between; align-items: center; margin-top: 16px; padding-top: 14px; border-top: 0.5px solid var(--separator); font-size: 0.8125rem; }
+  .up-row .k { color: var(--muted); }
+  .up-row .v { font-weight: 600; font-variant-numeric: tabular-nums; }
 
-  .quota-head { display: flex; justify-content: space-between; align-items: baseline; margin-bottom: 8px; }
-  .quota-title { font-size: 12px; color: var(--muted); }
-  .quota-value { font-size: 13px; font-weight: 600; color: var(--text); font-variant-numeric: tabular-nums; }
-  .quota-track { height: 6px; border-radius: 3px; background: var(--border); overflow: hidden; }
-  .quota-fill { height: 100%; background: var(--cpu); border-radius: 3px; transition: width 700ms cubic-bezier(0.22,1,0.36,1), background-color 400ms ease; }
+  .tiles { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-bottom: 12px; }
+  .tiles .card { margin: 0; display: flex; flex-direction: column; gap: 4px; min-height: 128px; }
+  .tile-value { font-family: var(--display); font-size: 1.5rem; font-weight: 700; letter-spacing: -0.03em; font-variant-numeric: tabular-nums; margin-top: auto; }
+  .tile-value small { font-size: 0.8125rem; font-weight: 500; color: var(--muted); letter-spacing: 0; }
+  .tile-sub { font-size: 0.75rem; color: var(--muted); }
+  .quota-track { height: 6px; border-radius: 3px; background: var(--track); overflow: hidden; margin-top: 8px; }
+  .quota-fill { height: 100%; min-width: 6px; background: var(--accent); border-radius: 3px; transition: width 900ms var(--spring), background-color 400ms ease; }
   .quota-fill.warn { background: var(--warn); }
-  .quota-sub { font-size: 10px; color: var(--faint); margin-top: 6px; }
+  .cost-badge { align-self: flex-start; font-size: 0.6875rem; font-weight: 600; color: var(--accent); background: var(--accent-soft); padding: 3px 8px; border-radius: 999px; margin-top: 6px; }
+  .cost-badge.warn { color: var(--warn); background: color-mix(in srgb, var(--warn) 14%, transparent); }
 
-  /* -- devices -- */
-  .section-label {
-    font-size: 11px;
-    color: var(--muted);
-    margin: 20px 2px 8px;
-  }
+  .section-head { display: flex; align-items: baseline; justify-content: space-between; margin: 26px 4px 10px; }
+  .section-head h2 { font-family: var(--display); font-size: 1.25rem; font-weight: 700; letter-spacing: -0.02em; margin: 0; }
+  .section-head span { font-size: 0.8125rem; color: var(--muted); font-variant-numeric: tabular-nums; }
+
+  #peersCard { padding: 4px 0; overflow: hidden; }
   .peer {
-    display: grid;
-    grid-template-columns: 1fr auto;
-    align-items: center;
-    gap: 12px;
-    padding: 13px 16px;
+    position: relative;
+    display: grid; grid-template-columns: 1fr auto; align-items: center; gap: 12px;
+    padding: 12px 16px;
+    transition: background-color 120ms ease-out;
   }
-  .peer + .peer { border-top: 1px solid var(--border); }
-  .peer-id { display: flex; align-items: center; gap: 9px; min-width: 0; }
-  .signal { position: relative; width: 7px; height: 7px; flex-shrink: 0; }
-  .signal-core {
-    position: absolute; inset: 0; border-radius: 50%; background: var(--idle);
-    transition: background-color 500ms cubic-bezier(0.22,1,0.36,1);
+  .peer:active { background: var(--card-press); }
+  .peer + .peer::before { content: ""; position: absolute; top: 0; left: 66px; right: 0; border-top: 0.5px solid var(--separator); }
+  .peer-id { display: flex; align-items: center; gap: 12px; min-width: 0; }
+  .glyph {
+    position: relative; width: 38px; height: 38px; flex-shrink: 0;
+    border-radius: 11px; background: var(--accent-soft); color: var(--accent);
+    display: grid; place-items: center;
   }
-  .signal.live .signal-core { background: var(--live); }
-  .signal.live::after {
-    content: ""; position: absolute; inset: 0; border-radius: 50%;
-    border: 1px solid var(--live);
-    animation: ping 2.4s cubic-bezier(0,0,0.2,1) infinite;
+  .glyph svg { width: 20px; height: 20px; }
+  .glyph.off { background: var(--track); color: var(--faint); }
+  .glyph .badge {
+    position: absolute; right: -3px; bottom: -3px;
+    width: 12px; height: 12px; border-radius: 50%;
+    background: var(--live); border: 2.5px solid var(--card);
   }
-  @keyframes ping { 0% { transform: scale(1); opacity: 0.6; } 100% { transform: scale(2.8); opacity: 0; } }
-
+  @media (prefers-color-scheme: dark) { .glyph .badge { border-color: #17163A; } }
   .peer-text { min-width: 0; }
-  .peer-name { font-size: 13px; font-weight: 500; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-  .peer-meta { font-size: 11px; color: var(--faint); margin-top: 1px; }
-
-  .peer-chart { display: flex; flex-direction: column; align-items: flex-end; gap: 3px; }
-  .peer-bytes { font-size: 10px; color: var(--muted); display: flex; gap: 8px; }
+  .peer-name { font-size: 0.9375rem; font-weight: 500; letter-spacing: -0.005em; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .peer-meta { font-size: 0.75rem; color: var(--muted); margin-top: 1px; font-variant-numeric: tabular-nums; }
+  .peer-chart { display: flex; flex-direction: column; align-items: flex-end; gap: 4px; }
+  .peer-bytes { font-size: 0.6875rem; color: var(--muted); display: flex; gap: 8px; font-variant-numeric: tabular-nums; }
   .spark { display: block; }
-  .spark path.line { fill: none; stroke: var(--cpu); stroke-width: 1.3; opacity: 0.9; }
+  .spark path.line { fill: none; stroke: var(--accent); stroke-width: 1.6; stroke-linecap: round; }
   .spark path.area { stroke: none; fill: url(#sparkGradient); }
-  .spark.idle path.line { stroke: var(--idle); }
+  .spark.idle path.line { stroke: var(--faint); }
+  .spark.idle path.area { fill: none; }
+  .empty-state { padding: 22px 0; text-align: center; color: var(--muted); font-size: 0.8125rem; }
 
-  .empty-state { padding: 20px 0; text-align: center; color: var(--faint); font-size: 12px; }
-
-  /* -- login -- */
-  #login .card {
-    max-width: 320px;
-    margin: 90px auto 0;
-    padding: 26px 22px;
-    text-align: center;
-  }
-  #login h2 { font-size: 15px; font-weight: 600; margin: 0 0 4px; }
-  #login p { font-size: 12px; color: var(--muted); margin: 0 0 16px; }
+  #login { padding-top: 14vh; }
+  #login .card { max-width: 340px; margin: 0 auto; padding: 30px 24px 24px; text-align: center; }
+  #login .logo { width: 56px; height: 56px; border-radius: 14px; margin-bottom: 14px; }
+  #login h2 { font-family: var(--display); font-size: 1.375rem; font-weight: 700; letter-spacing: -0.02em; margin: 0 0 4px; }
+  #login p { font-size: 0.875rem; color: var(--muted); margin: 0 0 20px; }
   #login input {
-    width: 100%;
-    padding: 11px 13px;
-    border-radius: 10px;
-    border: 1px solid var(--border);
-    background: rgba(255,255,255,0.04);
-    color: var(--text);
-    font-family: var(--sans);
-    font-size: 14px;
-    outline: none;
-    transition: border-color 200ms ease, background-color 200ms ease;
+    width: 100%; padding: 13px 14px; border-radius: 12px;
+    border: 1px solid transparent; background: var(--track); color: var(--text);
+    font: 1rem var(--sans); outline: none;
+    transition: border-color 200ms ease, box-shadow 200ms ease;
   }
-  #login input:focus { border-color: var(--cpu); background: rgba(255,255,255,0.06); }
+  #login input:focus { border-color: var(--accent); box-shadow: 0 0 0 4px var(--accent-soft); }
   #login button {
-    width: 100%;
-    margin-top: 10px;
-    padding: 11px;
-    border-radius: 10px;
-    border: none;
-    background: var(--text);
-    color: #0a0b0d;
-    font-family: var(--sans);
-    font-size: 13px;
-    font-weight: 600;
-    cursor: pointer;
-    transition: transform 100ms ease-out, opacity 150ms ease-out;
+    width: 100%; margin-top: 12px; padding: 13px; border: none; border-radius: 12px;
+    background: var(--periwinkle); color: #fff;
+    font: 600 0.9375rem var(--sans); cursor: pointer;
+    transition: transform 100ms ease-out, filter 150ms ease-out;
   }
-  #login button:active { transform: scale(0.97); opacity: 0.85; }
+  #login button:active { transform: scale(0.97); filter: brightness(0.92); }
 
   @media (prefers-reduced-motion: reduce) {
-    .signal.live::after { animation: none; }
-    .ring-fg { transition: none; }
+    .ring-fg, .quota-fill, .status-dot { transition: none; }
+    #login button:active { transform: none; }
+  }
+  @media (prefers-reduced-transparency: reduce) {
+    .bar { background: var(--bg); -webkit-backdrop-filter: none; backdrop-filter: none; }
+  }
+  @media (prefers-contrast: more) {
+    .card { box-shadow: 0 0 0 1px var(--muted); }
   }
 </style>
 </head>
@@ -202,77 +225,97 @@
 
 <div class="app" id="login" style="display:none;">
   <div class="card">
-    <h2>Sign in required</h2>
-    <p>Enter your access token</p>
+    <img class="logo" src="icons/icon-192.png" alt="">
+    <h2>Sign in</h2>
+    <p>Enter your access token to continue</p>
     <input id="tokenInput" type="password" placeholder="Token" autocapitalize="off" autocorrect="off" spellcheck="false">
     <button onclick="saveToken()">Continue</button>
   </div>
 </div>
 
 <div class="app" id="app" style="display:none;">
-  <header>
+  <div class="bar">
     <img class="logo" src="icons/icon-40.png" alt="">
-    <div class="status-dot" id="headerDot"></div>
-    <h1>Server-VPN Status Board</h1>
-    <span class="updated">Last Update: <span id="updated">—</span></span>
-  </header>
+    <span class="bar-title">Server-VPN</span>
+    <span class="pill">Updated <span id="updated">—</span></span>
+  </div>
+
+  <div class="hero">
+    <h1>Status Board</h1>
+    <div class="subtitle"><span class="status-dot" id="headerDot"></span><span id="summary">—</span></div>
+  </div>
 
   <div id="errorBox"></div>
 
   <div class="card">
     <div class="server-grid">
       <div class="ring-wrap">
-        <svg width="88" height="88" viewBox="0 0 88 88">
-          <circle class="ring-bg" cx="44" cy="44" r="38"></circle>
-          <circle class="ring-fg" id="diskRing" cx="44" cy="44" r="38" stroke-dasharray="238.76" stroke-dashoffset="238.76"></circle>
+        <svg width="104" height="104" viewBox="0 0 104 104">
+          <circle class="ring-bg" cx="52" cy="52" r="44"></circle>
+          <circle class="ring-fg" id="diskRing" cx="52" cy="52" r="44" stroke-dasharray="276.46" stroke-dashoffset="276.46"></circle>
         </svg>
         <div class="ring-center">
           <div class="ring-value" id="diskValue">—</div>
-          <div class="ring-label">disk</div>
+          <div class="ring-label">Disk</div>
         </div>
       </div>
       <div class="chart-wrap">
-        <div class="legend">
-          <div class="legend-item"><span class="legend-dot" style="background:var(--cpu)"></span>cpu <span class="legend-value" id="cpuValue">—</span></div>
-          <div class="legend-item"><span class="legend-dot" style="background:var(--ram)"></span>ram <span class="legend-value" id="ramValue">—</span></div>
+        <div class="metrics">
+          <div class="metric">
+            <div class="eyebrow"><span class="legend-dot" style="background:var(--accent)"></span>CPU</div>
+            <div class="metric-value" id="cpuValue">—</div>
+          </div>
+          <div class="metric">
+            <div class="eyebrow"><span class="legend-dot" style="background:var(--accent-2)"></span>RAM</div>
+            <div class="metric-value" id="ramValue">—</div>
+          </div>
         </div>
-        <svg class="trend-svg" id="trendChart" viewBox="0 0 200 46" preserveAspectRatio="none"></svg>
+        <svg class="trend-svg" id="trendChart" viewBox="0 0 200 52" preserveAspectRatio="none"></svg>
       </div>
     </div>
     <div class="up-row">
-      <span class="k">Working For:</span>
+      <span class="k">Uptime</span>
       <span class="v" id="uptimeValue">—</span>
     </div>
   </div>
 
-  <div class="card" id="quotaCard" style="display:none;">
-    <div class="quota-head">
-      <span class="quota-title">Oracle Free Tier — Outbound Data</span>
-      <span class="quota-value" id="quotaValue">—</span>
+  <div class="tiles">
+    <div class="card" id="quotaCard" style="display:none;">
+      <span class="eyebrow">Outbound Data</span>
+      <span class="tile-value" id="quotaValue">—</span>
+      <span class="tile-sub" id="quotaSub">—</span>
+      <div class="quota-track"><div class="quota-fill" id="quotaFill" style="width:0%"></div></div>
     </div>
-    <div class="quota-track"><div class="quota-fill" id="quotaFill" style="width:0%"></div></div>
-    <div class="quota-sub" id="quotaSub">—</div>
+    <div class="card" id="costCard" style="display:none;">
+      <span class="eyebrow">Oracle Cost</span>
+      <span class="tile-value" id="costValue">—</span>
+      <span class="tile-sub" id="costSub">—</span>
+      <span class="cost-badge" id="costBadge">Always Free</span>
+    </div>
   </div>
 
-  <div class="card" id="costCard" style="display:none;">
-    <div class="quota-head">
-      <span class="quota-title">Oracle Cloud — This Month's Cost</span>
-      <span class="quota-value" id="costValue">—</span>
-    </div>
-    <div class="quota-sub" id="costSub">—</div>
+  <div class="section-head">
+    <h2>Devices</h2>
+    <span id="onlineCount">—</span>
   </div>
-
-  <div class="section-label">Devices</div>
-  <div class="card" id="peersCard" style="padding:0;">
+  <div class="card" id="peersCard">
     <div id="peers"></div>
   </div>
 </div>
 
-<svg width="0" height="0" style="position:absolute">
+<svg width="0" height="0" style="position:absolute" aria-hidden="true">
   <defs>
     <linearGradient id="sparkGradient" x1="0" y1="0" x2="0" y2="1">
-      <stop offset="0%" stop-color="#60a5fa" stop-opacity="0.35"/>
-      <stop offset="100%" stop-color="#60a5fa" stop-opacity="0"/>
+      <stop offset="0%" stop-color="#6260FF" stop-opacity="0.28"/>
+      <stop offset="100%" stop-color="#6260FF" stop-opacity="0"/>
+    </linearGradient>
+    <linearGradient id="trendGradient" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%" stop-color="#6260FF" stop-opacity="0.22"/>
+      <stop offset="100%" stop-color="#6260FF" stop-opacity="0"/>
+    </linearGradient>
+    <linearGradient id="ringGradient" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0%" stop-color="#8B89FF"/>
+      <stop offset="100%" stop-color="#6260FF"/>
     </linearGradient>
   </defs>
 </svg>
@@ -283,6 +326,18 @@ const cpuHistory = [];
 const ramHistory = [];
 const peerHistory = {};
 const MAX_POINTS = 24;
+
+const ICONS = {
+  laptop: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="4" y="5" width="16" height="11" rx="1.8"/><path d="M2 19h20"/></svg>',
+  phone: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="7" y="2.5" width="10" height="19" rx="2.6"/><path d="M11 18.5h2"/></svg>',
+  tablet: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="4.5" y="2.5" width="15" height="19" rx="2.4"/><path d="M11 18.5h2"/></svg>'
+};
+function iconFor(name) {
+  const n = name.toLowerCase();
+  if (n.includes("ipad") || n.includes("tab")) return ICONS.tablet;
+  if (n.includes("iphone") || n.includes("phone") || n.includes("android")) return ICONS.phone;
+  return ICONS.laptop;
+}
 
 function getToken() { return localStorage.getItem(TOKEN_KEY); }
 function saveToken() {
@@ -318,55 +373,47 @@ function fmtUptime(seconds) {
 }
 
 function fmtGB(bytes) {
-  return (bytes / 1024 ** 3).toFixed(1) + " GB";
+  return (bytes / 1024 ** 3).toFixed(1);
 }
 
-// Smooth path through points using quadratic midpoint smoothing.
 function smoothPath(pts) {
   if (pts.length < 2) return "";
   let d = `M ${pts[0][0]} ${pts[0][1]}`;
   for (let i = 0; i < pts.length - 1; i++) {
     const [x0, y0] = pts[i];
     const [x1, y1] = pts[i + 1];
-    const mx = (x0 + x1) / 2;
-    const my = (y0 + y1) / 2;
-    d += ` Q ${x0} ${y0} ${mx} ${my}`;
+    d += ` Q ${x0} ${y0} ${(x0 + x1) / 2} ${(y0 + y1) / 2}`;
   }
   const last = pts[pts.length - 1];
-  d += ` L ${last[0]} ${last[1]}`;
-  return d;
+  return d + ` L ${last[0]} ${last[1]}`;
 }
 
 function renderTrend() {
-  const w = 200, h = 46;
+  const w = 200, h = 52;
   const n = Math.max(cpuHistory.length, ramHistory.length, 2);
-  const step = w / (Math.max(n, 2) - 1);
-
+  const step = w / (n - 1);
   function toPoints(series) {
     const padded = Array(n - series.length).fill(series[0] ?? 0).concat(series);
     return padded.map((v, i) => [i * step, h - (v / 100) * (h - 4) - 2]);
   }
-
-  const cpuPts = toPoints(cpuHistory.length ? cpuHistory : [0]);
-  const ramPts = toPoints(ramHistory.length ? ramHistory : [0]);
-
-  const svg = document.getElementById("trendChart");
-  svg.innerHTML = `
-    <path class="line" d="${smoothPath(ramPts)}" stroke="var(--ram)" opacity="0.85"></path>
-    <path class="line" d="${smoothPath(cpuPts)}" stroke="var(--cpu)"></path>
+  const cpuLine = smoothPath(toPoints(cpuHistory.length ? cpuHistory : [0]));
+  const ramLine = smoothPath(toPoints(ramHistory.length ? ramHistory : [0]));
+  document.getElementById("trendChart").innerHTML = `
+    <path d="${cpuLine} L ${w} ${h} L 0 ${h} Z" fill="url(#trendGradient)"></path>
+    <path class="line" d="${ramLine}" stroke="var(--accent-2)"></path>
+    <path class="line" d="${cpuLine}" stroke="var(--accent)"></path>
   `;
 }
 
-function sparkline(points, w = 64, h = 22) {
+function sparkline(points, w = 72, h = 24) {
   if (points.length < 2) return `<svg class="spark idle" width="${w}" height="${h}"></svg>`;
   const max = Math.max(...points, 1);
   const step = w / (points.length - 1);
-  const pts = points.map((v, i) => [i * step, h - (v / max) * (h - 3) - 1]);
+  const pts = points.map((v, i) => [i * step, h - (v / max) * (h - 3) - 1.5]);
   const linePath = smoothPath(pts);
-  const areaPath = `${linePath} L ${w} ${h} L 0 ${h} Z`;
   const isIdle = max <= 1;
   return `<svg class="spark ${isIdle ? "idle" : ""}" width="${w}" height="${h}" viewBox="0 0 ${w} ${h}">
-    <path class="area" d="${areaPath}"></path>
+    <path class="area" d="${linePath} L ${w} ${h} L 0 ${h} Z"></path>
     <path class="line" d="${linePath}"></path>
   </svg>`;
 }
@@ -388,15 +435,15 @@ function peerRow(p) {
   const points = updatePeerHistory(p);
   return `<div class="peer">
     <div class="peer-id">
-      <div class="signal ${p.connected ? "live" : ""}"><div class="signal-core"></div></div>
+      <div class="glyph ${p.connected ? "" : "off"}">${iconFor(p.name)}${p.connected ? '<span class="badge"></span>' : ""}</div>
       <div class="peer-text">
         <div class="peer-name">${p.name}</div>
-        <div class="peer-meta">${p.allowed_ips.replace("/32", "")} · ${fmtRelative(p.latest_handshake)}</div>
+        <div class="peer-meta">${p.allowed_ips.replace("/32", "")} · ${p.connected ? "Active " : "Seen "}${fmtRelative(p.latest_handshake)}</div>
       </div>
     </div>
     <div class="peer-chart">
       ${sparkline(points)}
-      <div class="peer-bytes"><span>↓${fmtBytes(p.rx_bytes)}</span><span>↑${fmtBytes(p.tx_bytes)}</span></div>
+      <div class="peer-bytes"><span>↓ ${fmtBytes(p.rx_bytes)}</span><span>↑ ${fmtBytes(p.tx_bytes)}</span></div>
     </div>
   </div>`;
 }
@@ -404,11 +451,8 @@ function peerRow(p) {
 async function refresh() {
   const token = getToken();
   if (!token) return showLogin();
-
   try {
-    const res = await fetch("/api/status", {
-      headers: { Authorization: "Bearer " + token }
-    });
+    const res = await fetch("/api/status", { headers: { Authorization: "Bearer " + token } });
     if (res.status === 401) {
       localStorage.removeItem(TOKEN_KEY);
       return showLogin();
@@ -419,7 +463,6 @@ async function refresh() {
       ? `<div class="error-line">wg show error: ${data.wg_error}</div>` : "";
 
     const s = data.system;
-
     cpuHistory.push(s.cpu_percent);
     ramHistory.push(s.memory_percent);
     if (cpuHistory.length > MAX_POINTS) cpuHistory.shift();
@@ -430,35 +473,38 @@ async function refresh() {
     document.getElementById("uptimeValue").textContent = fmtUptime(s.uptime_seconds);
     renderTrend();
 
-    const circumference = 238.76;
-    const offset = circumference - (s.disk_percent / 100) * circumference;
-    document.getElementById("diskRing").style.strokeDashoffset = offset;
+    const circumference = 276.46;
+    document.getElementById("diskRing").style.strokeDashoffset = circumference - (s.disk_percent / 100) * circumference;
     document.getElementById("diskValue").textContent = s.disk_percent.toFixed(0) + "%";
 
-    const anyLive = data.peers.some(p => p.connected);
-    document.getElementById("headerDot").classList.toggle("live", anyLive);
+    const online = data.peers.filter(p => p.connected).length;
+    document.getElementById("headerDot").classList.toggle("live", online > 0);
+    document.getElementById("summary").textContent =
+      online > 0 ? `${online} of ${data.peers.length} devices online` : "No devices online";
+    document.getElementById("onlineCount").textContent = `${online} online`;
 
     if (data.egress) {
       const q = data.egress;
-      document.getElementById("quotaCard").style.display = "block";
-      document.getElementById("quotaValue").textContent = `${fmtGB(q.used_bytes)} / 10 TB`;
+      document.getElementById("quotaCard").style.display = "flex";
+      document.getElementById("quotaValue").innerHTML = `${fmtGB(q.used_bytes)} <small>GB</small>`;
       const fill = document.getElementById("quotaFill");
       fill.style.width = q.percent + "%";
       fill.classList.toggle("warn", q.percent >= 80);
-      document.getElementById("quotaSub").textContent =
-        `${q.percent}% used this month (${q.month})`;
+      document.getElementById("quotaSub").textContent = `${q.percent}% of 10 TB · ${q.month}`;
     } else if (data.egress_error) {
       document.getElementById("quotaCard").style.display = "none";
     }
 
     if (data.cost) {
       const c = data.cost;
-      document.getElementById("costCard").style.display = "block";
-      const v = document.getElementById("costValue");
-      v.textContent = new Intl.NumberFormat("en-GB", { style: "currency", currency: c.currency }).format(c.amount);
-      v.style.color = c.amount > 0 ? "var(--warn)" : "";
+      document.getElementById("costCard").style.display = "flex";
+      document.getElementById("costValue").textContent =
+        new Intl.NumberFormat("en-GB", { style: "currency", currency: c.currency }).format(c.amount);
       const t = new Date(c.updated_at * 1000).toLocaleTimeString("en-GB", { hour: "2-digit", minute: "2-digit", hour12: false });
-      document.getElementById("costSub").textContent = `${c.month} · updated ${t} · refreshes every 6h`;
+      document.getElementById("costSub").textContent = `${c.month} · updated ${t}`;
+      const badge = document.getElementById("costBadge");
+      badge.textContent = c.amount > 0 ? "Charges detected" : "Always Free";
+      badge.classList.toggle("warn", c.amount > 0);
     } else {
       document.getElementById("costCard").style.display = "none";
     }
@@ -468,7 +514,7 @@ async function refresh() {
       `<div class="empty-state">No devices found</div>`;
 
     document.getElementById("updated").textContent =
-      new Date(data.generated_at * 1000).toLocaleTimeString("en-GB", { hour12: false });
+      new Date(data.generated_at * 1000).toLocaleTimeString("en-GB", { hour: "2-digit", minute: "2-digit", hour12: false });
 
     document.getElementById("login").style.display = "none";
     document.getElementById("app").style.display = "block";
